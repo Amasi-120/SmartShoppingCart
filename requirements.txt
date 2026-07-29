@@ -1,8 +1,6 @@
-fastapi
-uvicorn
+streamlit
 ultralytics
-opencv-python
+opencv-python-headless
 pillow
-python-multipart
 torch
 torchvision
