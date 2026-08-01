@@ -3,41 +3,72 @@ from ultralytics import YOLO
 from PIL import Image
 import re
 
-# إعداد الصفحة (يجب أن يكون أول أمر Streamlit)
+
+# -----------------------------
+# Page Configuration
+# -----------------------------
 st.set_page_config(
     page_title="Smart Shopping Cart",
     page_icon="🛒",
-    layout="centered"
+    layout="wide"
 )
 
-# تصميم الواجهة
+
+# -----------------------------
+# Custom CSS
+# -----------------------------
 st.markdown("""
 <style>
 
 .main-title {
-    font-size: 45px;
-    font-weight: bold;
+    font-size: 50px;
+    font-weight: 800;
     text-align: center;
-    color: #2E7D32;
+    color: #1B5E20;
 }
 
-.subtitle {
+.sub-title {
     text-align: center;
-    font-size: 20px;
-    color: #666;
+    font-size: 22px;
+    color: #555;
+    margin-bottom: 30px;
 }
 
-.result-box {
+
+.card {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 15px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+}
+
+
+.product-card {
+    background-color: #ffffff;
     padding: 15px;
-    border-radius: 10px;
-    background-color: #f5f5f5;
+    border-radius: 12px;
+    border-left: 6px solid #2E7D32;
+    margin-bottom: 10px;
+    font-size: 18px;
 }
+
+
+.footer {
+    text-align: center;
+    color: gray;
+    margin-top: 40px;
+}
+
 
 </style>
 """, unsafe_allow_html=True)
 
 
-# تحميل النموذج
+
+# -----------------------------
+# Load Model
+# -----------------------------
 @st.cache_resource
 def load_model():
     return YOLO("best.pt")
@@ -46,98 +77,187 @@ def load_model():
 model = load_model()
 
 
-# تنظيف أسماء الكلاسات
+
+# -----------------------------
+# Helper Function
+# -----------------------------
 def clean_class_name(name):
-    name = re.sub(r'^\d+_', '', str(name))
+
+    name = re.sub(r"^\d+_", "", str(name))
     name = name.replace("_", " ")
+
     return name.title()
 
 
-# العنوان
+
+# -----------------------------
+# Header
+# -----------------------------
 st.markdown(
     '<div class="main-title">🛒 Smart Shopping Cart</div>',
     unsafe_allow_html=True
 )
 
 st.markdown(
-    '<div class="subtitle">AI-Based Product Detection System</div>',
+    '<div class="sub-title">AI-Powered Retail Product Detection System</div>',
     unsafe_allow_html=True
 )
 
 
-st.write("")
 
-st.info("""
-📌 للحصول على أفضل نتيجة:
-- ضع المنتج بشكل واضح داخل الصورة.
-- تجنب الصور المظلمة أو المشوشة.
-- حاول تصوير المنتجات من الأمام.
-""")
+# -----------------------------
+# Introduction
+# -----------------------------
+st.markdown("""
+<div class="card">
+
+<b>About the System</b><br><br>
+
+Smart Shopping Cart uses a YOLO deep learning model
+to automatically detect retail products from images.
+
+Upload a product image and the AI model will identify
+the detected items with confidence scores.
+
+</div>
+""", unsafe_allow_html=True)
 
 
-# رفع الصورة
+
+# -----------------------------
+# Guidelines
+# -----------------------------
+with st.expander("📌 Image Guidelines"):
+
+    st.write("""
+    For better detection accuracy:
+
+    ✅ Keep products clearly visible  
+    ✅ Avoid blurry images  
+    ✅ Use good lighting  
+    ✅ Place products separately when possible
+    """)
+
+
+
+# -----------------------------
+# Upload Image
+# -----------------------------
 uploaded_file = st.file_uploader(
-    "📸 Upload a product image",
+    "Upload Product Image",
     type=["jpg", "jpeg", "png"]
 )
 
 
-if uploaded_file is not None:
+
+if uploaded_file:
+
 
     image = Image.open(uploaded_file)
 
-    st.subheader("📷 Uploaded Image")
 
-    st.image(
-        image,
-        use_container_width=True
-    )
-
-
-    with st.spinner("🤖 Detecting products..."):
+    with st.spinner("Analyzing image using AI..."):
 
         results = model(image)
 
-
-    result = results[0]
-
-
-    # صورة الكشف
-    plotted_image = result.plot()
-
-    st.subheader("🔍 Detection Result")
-
-    st.image(
-        plotted_image,
-        use_container_width=True
-    )
+        result = results[0]
 
 
-    st.subheader("🛒 Detected Products")
+
+    detected_image = result.plot()
+
+
+
+    # -----------------------------
+    # Display Images
+    # -----------------------------
+    col1, col2 = st.columns(2)
+
+
+    with col1:
+
+        st.subheader("Original Image")
+
+        st.image(
+            image,
+            use_container_width=True
+        )
+
+
+
+    with col2:
+
+        st.subheader("Detection Result")
+
+        st.image(
+            detected_image,
+            use_container_width=True
+        )
+
+
+
+    # -----------------------------
+    # Results
+    # -----------------------------
+    st.subheader("Detected Products")
+
 
 
     if len(result.boxes) == 0:
 
-        st.warning("No products detected.")
+        st.warning(
+            "No products detected."
+        )
+
 
     else:
 
+        st.success(
+            f"{len(result.boxes)} product(s) detected successfully!"
+        )
+
+
         for box in result.boxes:
 
-            class_id = int(box.cls[0])
-            confidence = float(box.conf[0])
 
-            product_name = clean_class_name(
+            class_id = int(box.cls[0])
+
+            confidence = float(
+                box.conf[0]
+            )
+
+
+            product = clean_class_name(
                 model.names[class_id]
             )
 
 
             st.markdown(
                 f"""
-                <div class="result-box">
-                🏷️ <b>{product_name}</b><br>
-                🎯 Confidence: {confidence:.2%}
+                <div class="product-card">
+
+                🏷️ <b>Product:</b> {product}<br>
+
+                🎯 <b>Confidence:</b> {confidence:.2%}
+
                 </div>
                 """,
                 unsafe_allow_html=True
             )
+
+
+
+# -----------------------------
+# Footer
+# -----------------------------
+st.markdown(
+"""
+<div class="footer">
+
+Developed using YOLO + Streamlit  
+Artificial Intelligence Project
+
+</div>
+""",
+unsafe_allow_html=True
+)
